@@ -7,5 +7,4 @@ type Position struct {
 	BestMove string `bson:"bestMove,omitempty"`
 	Depth string `bson:"depth,omitempty"`
 	MyMove string `bson:"myMove,omitempty"`
-	Hash string `bson:"hash,omitempty"`
 }
