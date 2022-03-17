@@ -66,7 +66,7 @@ func Interactive(fenString string) error {
 			}
 		} else {
 			posData, _ := lichess.PositionData(game.FEN())
-			moveStr := chooseMove(posData)
+			moveStr := castleCorrect(chooseMove(posData))
 			notation := chess.UCINotation{}
 			move, err := notation.Decode(game.Position(), moveStr)
 			if err != nil {
@@ -175,4 +175,19 @@ func getMove(position *chess.Position, depth int) (string, error) {
 	moveStr := bestMove.String()
 
 	return moveStr, nil
+}
+
+func castleCorrect(moveStr string) string {
+	switch moveStr{
+	case "e1h1":
+		return "e1g1"
+	case "e8h8":
+		return "e8g8"
+	case "e1a1":
+		return "e1c1"
+	case "e8a8":
+		return "e8c8"
+	default:
+		return moveStr
+	}
 }
