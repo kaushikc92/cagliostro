@@ -6,9 +6,12 @@ import(
 	"os"
 	"bufio"
 	"strings"
+	"strconv"
 	xrand "golang.org/x/exp/rand"
 	"github.com/kaushikc92/chess"
+	"github.com/kaushikc92/chess/uci"
 	"github.com/kaushikc92/cagliostro/pkg/lichess"
+	"github.com/kaushikc92/cagliostro/pkg/db"
 	"gonum.org/v1/gonum/stat/distuv"
 
 )
@@ -28,16 +31,35 @@ func Interactive(fenString string) error {
 			inp = inp[:len(inp) - 1]
 			inputs := strings.Split(inp, " ")
 			switch inputs[0] {
+			case "":
+				continue
 			case "draw":
 				fmt.Printf(game.Position().Board().Draw())
 			case "check":
-			case "update":
-			case "eval":
-			case "force":
-			default:
-				err := game.MoveStr(inputs[0])
+				err := checkPosition(game.Position().String())
 				if err != nil {
-					fmt.Printf("%v", err)
+					fmt.Printf("%v\n", err)
+				}
+			case "update":
+				depth, err := strconv.Atoi(inputs[1])
+				if err != nil {
+					fmt.Printf("%v\n", err)
+				} else {
+					err = updatePosition(game.Position(), depth, inputs[2])
+					if err != nil {
+						fmt.Printf("%v\n", err)
+					}
+				}
+			default:
+				notation := chess.UCINotation{}
+				move, err := notation.Decode(game.Position(), inputs[0])
+				if err != nil {
+					fmt.Printf("%v\n", err)
+					continue
+				}
+				err = game.Move(move)
+				if err != nil {
+					fmt.Printf("%v\n", err)
 				} else {
 					playerTurn = false
 				}
@@ -45,8 +67,13 @@ func Interactive(fenString string) error {
 		} else {
 			posData, _ := lichess.PositionData(game.FEN())
 			moveStr := chooseMove(posData)
+			notation := chess.UCINotation{}
+			move, err := notation.Decode(game.Position(), moveStr)
+			if err != nil {
+				panic(err)
+			}
 			fmt.Printf("%v\n", moveStr)
-			err := game.MoveStr(moveStr)
+			err = game.Move(move)
 			if err != nil {
 				panic(err)
 			}
@@ -66,5 +93,86 @@ func chooseMove(posData lichess.PositionDataResults) string {
 	}
 	source := xrand.NewSource(uint64(time.Now().UnixNano()))
 	categorical := distuv.NewCategorical(weights, source)
-	return posData.Moves[int(categorical.Rand())].San
+	return posData.Moves[int(categorical.Rand())].Uci
+}
+
+func checkPosition(fenString string) error {
+	pos, err := db.GetPosition(fenString)
+	if err != nil {
+		switch err.(type) {
+		case *db.ErrPositionDoesntExist :
+			fmt.Print("This position does not exist in the database\n")
+		default:
+			return err
+		}
+	} else {
+		fmt.Printf("%+v\n", pos)
+	}
+	return nil
+}
+
+func updatePosition(position *chess.Position, depth int, myMove string) error {
+	fenString := position.String()
+	dbpos, err := db.GetPosition(fenString)
+	if err != nil {
+		switch err.(type) {
+		case *db.ErrPositionDoesntExist :
+			bestMove, err := getMove(position, depth)
+			if err != nil {
+				return err
+			}
+			newDbpos := db.Position{
+				Fen: fenString,
+				BestMove: bestMove,
+				Depth: depth,
+				MyMove: myMove,
+			}
+			db.UpsertPosition(newDbpos)
+		default:
+			return err
+		}
+	} else {
+		if depth > dbpos.Depth {
+			bestMove, err := getMove(position, depth)
+			if err != nil {
+				return err
+			}
+			newDbpos := db.Position{
+				Fen: fenString,
+				BestMove: bestMove,
+				Depth: depth,
+				MyMove: myMove,
+			}
+			db.UpsertPosition(newDbpos)
+		} else {
+			newDbpos := db.Position{
+				Fen: fenString,
+				BestMove: dbpos.BestMove,
+				Depth: dbpos.Depth,
+				MyMove: myMove,
+			}
+			db.UpsertPosition(newDbpos)
+		}
+	}
+	return nil
+}
+
+func getMove(position *chess.Position, depth int) (string, error) {
+	eng, err := uci.New("stockfish")
+	if err != nil {
+		return "", err
+	}
+	defer eng.Close()
+	if err != nil {
+		return "", err
+	}
+	setPos := uci.CmdPosition{Position: position}
+	setGo := uci.CmdGo{Depth: depth}
+	if err := eng.Run(uci.CmdUCINewGame, setPos, setGo, uci.CmdEval); err != nil {
+		return "", err
+	}
+	bestMove := eng.SearchResults().BestMove
+	moveStr := bestMove.String()
+
+	return moveStr, nil
 }
