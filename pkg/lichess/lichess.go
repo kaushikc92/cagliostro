@@ -30,5 +30,25 @@ func PositionData(fenString string) (PositionDataResults, error) {
 	if err := json.Unmarshal(body, &data); err != nil {
 		return PositionDataResults{}, err
 	}
+	castleCorrect(&data)
 	return data, nil
+}
+
+func castleCorrect(data *PositionDataResults){
+	n := len(data.Moves)
+	for i:=0 ; i<n ; i++ {
+		if data.Moves[i].San == "O-O" || data.Moves[i].San == "O-O-O" {
+			uci := data.Moves[i].Uci
+			switch uci{
+			case "e1h1":
+				data.Moves[i].Uci = "e1g1"
+			case "e8h8":
+				data.Moves[i].Uci = "e8g8"
+			case "e1a1":
+				data.Moves[i].Uci = "e1c1"
+			case "e8a8":
+				data.Moves[i].Uci = "e8c8"
+			}
+		}
+	}
 }

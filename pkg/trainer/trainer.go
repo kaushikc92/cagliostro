@@ -13,7 +13,6 @@ import(
 	"github.com/kaushikc92/cagliostro/pkg/lichess"
 	"github.com/kaushikc92/cagliostro/pkg/db"
 	"gonum.org/v1/gonum/stat/distuv"
-
 )
 
 func Interactive(fenString string) error {
@@ -38,7 +37,7 @@ func Interactive(fenString string) error {
 			case "check":
 				err := checkPosition(game.Position().String())
 				if err != nil {
-					fmt.Printf("%v\n", err)
+					panic(err)
 				}
 			case "update":
 				depth, err := strconv.Atoi(inputs[1])
@@ -47,7 +46,17 @@ func Interactive(fenString string) error {
 				} else {
 					err = updatePosition(game.Position(), depth, inputs[2])
 					if err != nil {
-						fmt.Printf("%v\n", err)
+						panic(err)
+					}
+				}
+			case "asyncupdate":
+				depth, err := strconv.Atoi(inputs[1])
+				if err != nil {
+					fmt.Printf("%v\n", err)
+				} else {
+					err = asyncUpdatePosition(game.Position(), depth)
+					if err != nil {
+						panic(err)
 					}
 				}
 			default:
@@ -66,7 +75,7 @@ func Interactive(fenString string) error {
 			}
 		} else {
 			posData, _ := lichess.PositionData(game.FEN())
-			moveStr := castleCorrect(chooseMove(posData))
+			moveStr := chooseMove(posData)
 			notation := chess.UCINotation{}
 			move, err := notation.Decode(game.Position(), moveStr)
 			if err != nil {
@@ -97,10 +106,10 @@ func chooseMove(posData lichess.PositionDataResults) string {
 }
 
 func checkPosition(fenString string) error {
-	pos, err := db.GetPosition(fenString)
+	pos, err := db.GetRepertoirePosition(fenString)
 	if err != nil {
 		switch err.(type) {
-		case *db.ErrPositionDoesntExist :
+		case *db.ErrRecordDoesntExist :
 			fmt.Print("This position does not exist in the database\n")
 		default:
 			return err
@@ -113,21 +122,21 @@ func checkPosition(fenString string) error {
 
 func updatePosition(position *chess.Position, depth int, myMove string) error {
 	fenString := position.String()
-	dbpos, err := db.GetPosition(fenString)
+	dbpos, err := db.GetRepertoirePosition(fenString)
 	if err != nil {
 		switch err.(type) {
-		case *db.ErrPositionDoesntExist :
+		case *db.ErrRecordDoesntExist :
 			bestMove, err := getMove(position, depth)
 			if err != nil {
 				return err
 			}
-			newDbpos := db.Position{
+			newDbpos := db.RepertoirePosition{
 				Fen: fenString,
 				BestMove: bestMove,
 				Depth: depth,
 				MyMove: myMove,
 			}
-			db.UpsertPosition(newDbpos)
+			db.UpsertRepertoirePosition(newDbpos)
 		default:
 			return err
 		}
@@ -137,21 +146,21 @@ func updatePosition(position *chess.Position, depth int, myMove string) error {
 			if err != nil {
 				return err
 			}
-			newDbpos := db.Position{
+			newDbpos := db.RepertoirePosition{
 				Fen: fenString,
 				BestMove: bestMove,
 				Depth: depth,
 				MyMove: myMove,
 			}
-			db.UpsertPosition(newDbpos)
+			db.UpsertRepertoirePosition(newDbpos)
 		} else {
-			newDbpos := db.Position{
+			newDbpos := db.RepertoirePosition{
 				Fen: fenString,
 				BestMove: dbpos.BestMove,
 				Depth: dbpos.Depth,
 				MyMove: myMove,
 			}
-			db.UpsertPosition(newDbpos)
+			db.UpsertRepertoirePosition(newDbpos)
 		}
 	}
 	return nil
@@ -168,7 +177,7 @@ func getMove(position *chess.Position, depth int) (string, error) {
 	}
 	setPos := uci.CmdPosition{Position: position}
 	setGo := uci.CmdGo{Depth: depth}
-	if err := eng.Run(uci.CmdUCINewGame, setPos, setGo, uci.CmdEval); err != nil {
+	if err := eng.Run(uci.CmdUCINewGame, setPos, setGo); err != nil {
 		return "", err
 	}
 	bestMove := eng.SearchResults().BestMove
@@ -177,17 +186,10 @@ func getMove(position *chess.Position, depth int) (string, error) {
 	return moveStr, nil
 }
 
-func castleCorrect(moveStr string) string {
-	switch moveStr{
-	case "e1h1":
-		return "e1g1"
-	case "e8h8":
-		return "e8g8"
-	case "e1a1":
-		return "e1c1"
-	case "e8a8":
-		return "e8c8"
-	default:
-		return moveStr
+func asyncUpdatePosition(position *chess.Position, depth int) error {
+	upos := db.UpdatePosition {
+		Fen: position.String(),
+		Depth: depth,
 	}
+	return db.UpsertUpdatePosition(upos)
 }
