@@ -75,7 +75,15 @@ func Interactive(fenString string) error {
 			}
 		} else {
 			posData, _ := lichess.PositionData(game.FEN())
-			moveStr := chooseMove(posData)
+			moveStr := ""
+			if posData.White + posData.Draws + posData.Black < 10 {
+				moveStr, err = getMoveAtElo(game.Position(), 2000, 5)
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				moveStr = chooseMove(posData)
+			}
 			notation := chess.UCINotation{}
 			move, err := notation.Decode(game.Position(), moveStr)
 			if err != nil {
@@ -172,12 +180,28 @@ func getMove(position *chess.Position, depth int) (string, error) {
 		return "", err
 	}
 	defer eng.Close()
-	if err != nil {
-		return "", err
-	}
 	setPos := uci.CmdPosition{Position: position}
 	setGo := uci.CmdGo{Depth: depth}
 	if err := eng.Run(uci.CmdUCINewGame, setPos, setGo); err != nil {
+		return "", err
+	}
+	bestMove := eng.SearchResults().BestMove
+	moveStr := bestMove.String()
+
+	return moveStr, nil
+}
+
+func getMoveAtElo(position *chess.Position, elo int, moveTime int) (string, error) {
+	eng, err := uci.New("stockfish")
+	if err != nil {
+		return "", err
+	}
+	defer eng.Close()
+	setLimitStrengthOpt := uci.CmdSetOption{Name: "UCI_LimitStrength", Value: "true"}
+	setEloOpt := uci.CmdSetOption{Name: "UCI_Elo", Value: strconv.Itoa(elo) }
+	setPos := uci.CmdPosition{Position: position}
+	setGo := uci.CmdGo{MoveTime: time.Second * time.Duration(moveTime)}
+	if err := eng.Run(uci.CmdUCINewGame, setLimitStrengthOpt, setEloOpt, setPos, setGo); err != nil {
 		return "", err
 	}
 	bestMove := eng.SearchResults().BestMove

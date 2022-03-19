@@ -15,6 +15,9 @@ type PositionDataResults struct {
 		Draws int `json:"draws"`
 		Black int `json:"black"`
 	} `json:"moves"`
+	White int `json:"white"`
+	Draws int `json:"draws"`
+	Black int `json:"black"`
 }
 
 func PositionData(fenString string) (PositionDataResults, error) {
