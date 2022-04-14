@@ -22,6 +22,8 @@ func Interactive(fenString string) error {
 	}
 	game := chess.NewGame(fen)
 	playerTurn := true
+	playTwoSides := false
+	engineElo := 2200
 	for {
 		if playerTurn {
 			fmt.Print("Enter your move:\n")
@@ -59,6 +61,14 @@ func Interactive(fenString string) error {
 						panic(err)
 					}
 				}
+			case "togglemode":
+				playTwoSides = !playTwoSides
+			case "elo":
+				elo, err := strconv.Atoi(inputs[1])
+				if err != nil {
+					panic(err)
+				}
+				engineElo = elo
 			default:
 				notation := chess.UCINotation{}
 				move, err := notation.Decode(game.Position(), inputs[0])
@@ -74,25 +84,27 @@ func Interactive(fenString string) error {
 				}
 			}
 		} else {
-			posData, _ := lichess.PositionData(game.FEN())
-			moveStr := ""
-			if posData.White + posData.Draws + posData.Black < 10 {
-				moveStr, err = getMoveAtElo(game.Position(), 2000, 5)
+			if !playTwoSides {
+				posData, _ := lichess.PositionData(game.FEN())
+				moveStr := ""
+				if posData.White + posData.Draws + posData.Black < 10 {
+					moveStr, err = getMoveAtElo(game.Position(), engineElo, 10)
+					if err != nil {
+						panic(err)
+					}
+				} else {
+					moveStr = chooseMove(posData)
+				}
+				notation := chess.UCINotation{}
+				move, err := notation.Decode(game.Position(), moveStr)
 				if err != nil {
 					panic(err)
 				}
-			} else {
-				moveStr = chooseMove(posData)
-			}
-			notation := chess.UCINotation{}
-			move, err := notation.Decode(game.Position(), moveStr)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("%v\n", moveStr)
-			err = game.Move(move)
-			if err != nil {
-				panic(err)
+				fmt.Printf("%v\n", moveStr)
+				err = game.Move(move)
+				if err != nil {
+					panic(err)
+				}
 			}
 			playerTurn = true
 		}

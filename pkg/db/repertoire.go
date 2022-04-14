@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 	"errors"
+	"strings"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -30,6 +31,7 @@ func GetRepertoirePosition(fen string) (*RepertoirePosition, error) {
 
 	collection := client.Database("cagliostro").Collection("repertoire")
 	var result RepertoirePosition
+	fen = removeClocksFromFen(fen)
 	err = collection.FindOne(ctx, bson.M{"fen": fen}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -59,6 +61,7 @@ func UpsertRepertoirePosition(rpos RepertoirePosition) error {
 
 	collection := client.Database("cagliostro").Collection("repertoire")
 	opts := options.Update().SetUpsert(true)
+	rpos.Fen = removeClocksFromFen(rpos.Fen)
 	filter := bson.M{"fen": rpos.Fen}
 	update := bson.D{{"$set", rpos}}
 	_, err = collection.UpdateOne(ctx, filter, update, opts)
@@ -67,4 +70,10 @@ func UpsertRepertoirePosition(rpos RepertoirePosition) error {
 	} else {
 		return nil
 	}
+}
+
+func removeClocksFromFen(fen string) string {
+	fen = strings.TrimSpace(fen)
+	parts := strings.Split(fen, " ")
+	return strings.Join(parts[0:4], " ")
 }
