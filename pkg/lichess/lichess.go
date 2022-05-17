@@ -40,7 +40,7 @@ func PositionData(fenString string) (PositionDataResults, error) {
 func castleCorrect(data *PositionDataResults){
 	n := len(data.Moves)
 	for i:=0 ; i<n ; i++ {
-		if data.Moves[i].San == "O-O" || data.Moves[i].San == "O-O-O" {
+		if data.Moves[i].San == "O-O" || data.Moves[i].San == "O-O-O" || data.Moves[i].San == "O-O-O+" || data.Moves[i].San == "O-O+" {
 			uci := data.Moves[i].Uci
 			switch uci{
 			case "e1h1":
