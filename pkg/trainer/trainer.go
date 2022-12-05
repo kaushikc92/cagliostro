@@ -69,6 +69,8 @@ func Interactive(fenString string) error {
 					panic(err)
 				}
 				engineElo = elo
+			case "switch":
+				playerTurn = false
 			default:
 				notation := chess.UCINotation{}
 				move, err := notation.Decode(game.Position(), inputs[0])
