@@ -18,12 +18,16 @@ WORKDIR /mongosh
 RUN wget https://downloads.mongodb.com/compass/mongodb-mongosh_1.3.1_amd64.deb
 RUN dpkg -i mongodb-mongosh_1.3.1_amd64.deb
 
+WORKDIR /mongodbtools
+RUN wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2004-x86_64-100.6.1.deb
+RUN dpkg -i mongodb-database-tools-ubuntu2004-x86_64-100.6.1.deb
+
 WORKDIR /go/src/github.com/kaushikc92/cagliostro
-COPY cmd cmd
-COPY go.mod .
-COPY go.sum .
-COPY main.go .
-COPY pkg pkg
+COPY cmd ./cmd/
+COPY pkg ./pkg/
+COPY main.go ./
+COPY go.mod ./
+COPY go.sum ./
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH

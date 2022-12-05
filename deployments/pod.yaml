@@ -5,4 +5,4 @@ metadata:
 spec:
   containers:
     - name: cagliostro
-      image: docker.io/kaushikc92/cagliostro
+      image: docker.io/kaushikc92/cagliostro:latest
