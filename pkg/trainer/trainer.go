@@ -34,14 +34,14 @@ func Interactive(fenString string) error {
 			switch inputs[0] {
 			case "":
 				continue
-			case "draw":
+			case "d":
 				fmt.Printf(game.Position().Board().Draw())
-			case "check":
+			case "c":
 				err := checkPosition(game.Position().String())
 				if err != nil {
 					panic(err)
 				}
-			case "update":
+			case "u":
 				depth, err := strconv.Atoi(inputs[1])
 				if err != nil {
 					fmt.Printf("%v\n", err)
@@ -51,7 +51,7 @@ func Interactive(fenString string) error {
 						panic(err)
 					}
 				}
-			case "asyncupdate":
+			case "au":
 				depth, err := strconv.Atoi(inputs[1])
 				if err != nil {
 					fmt.Printf("%v\n", err)
@@ -61,15 +61,15 @@ func Interactive(fenString string) error {
 						panic(err)
 					}
 				}
-			case "togglemode":
+			case "t":
 				playTwoSides = !playTwoSides
-			case "elo":
+			case "e":
 				elo, err := strconv.Atoi(inputs[1])
 				if err != nil {
 					panic(err)
 				}
 				engineElo = elo
-			case "switch":
+			case "s":
 				playerTurn = false
 			default:
 				notation := chess.UCINotation{}
@@ -89,7 +89,7 @@ func Interactive(fenString string) error {
 			if !playTwoSides {
 				posData, _ := lichess.PositionData(game.FEN())
 				moveStr := ""
-				if posData.White + posData.Draws + posData.Black < 10 {
+				if posData.White + posData.Draws + posData.Black < 2 {
 					moveStr, err = getMoveAtElo(game.Position(), engineElo, 10)
 					if err != nil {
 						panic(err)

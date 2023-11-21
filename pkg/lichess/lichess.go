@@ -22,7 +22,7 @@ type PositionDataResults struct {
 
 func PositionData(fenString string) (PositionDataResults, error) {
 	escapedQuery := url.QueryEscape(fenString)
-	lichessUrl := "https://explorer.lichess.ovh/lichess?topGames=0&recentGames=0&fen=" + escapedQuery
+	lichessUrl := "https://explorer.lichess.ovh/lichess?topGames=0&recentGames=0&speeds=blitz,rapid,classical&ratings=2000,2200,2500fen=" + escapedQuery
 	resp, err := http.Get(lichessUrl)
 	if err != nil {
 		return PositionDataResults{}, err
